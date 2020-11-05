@@ -2,6 +2,8 @@ package core
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/sha1"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -288,7 +290,75 @@ func TestChunkedOver2Write(t *testing.T) {
 	assert.EqualValues(t, []byte("test"), rb)
 }
 
-func BenchmarkWrite(b *testing.B) {
+func TestChunkedRWIntegrity(t *testing.T) {
+	chunkSize := 42 / 3
+	totalWrite := 42 * 41 * 40
+
+	pr, pw := io.Pipe()
+	defer pr.Close()
+	defer pw.Close()
+
+	cw := new(countWriter)
+	mw := io.MultiWriter(pw, cw)
+
+	r := NewChunkedReader(pr)
+	w := NewChunkedWriter(mw, chunkSize)
+
+	wh := make(chan []byte)
+	rh := make(chan []byte)
+
+	go func() {
+		h := sha1.New()
+		buf := make([]byte, 42)
+		for {
+			n, err := r.Read(buf)
+			if err == io.EOF {
+				break
+			}
+
+			assert.Nil(t, err)
+
+			_, err = h.Write(buf[:n])
+			assert.Nil(t, err)
+		}
+
+		rh <- h.Sum(nil)
+	}()
+
+	go func() {
+		h := sha1.New()
+		buf := make([]byte, 500/42)
+
+		for nn := totalWrite; nn > 0; {
+			read := len(buf)
+			if nn < read {
+				read = nn
+			}
+
+			n, err := rand.Read(buf[:read])
+			assert.Nil(t, err)
+			assert.Equal(t, n, read)
+
+			n, err = h.Write(buf[:read])
+			assert.Nil(t, err)
+			assert.Equal(t, n, read)
+
+			n, err = w.Write(buf[:read])
+			assert.Nil(t, err)
+			assert.Equal(t, n, read)
+
+			nn -= n
+		}
+		w.Close()
+
+		wh <- h.Sum(nil)
+	}()
+
+	assert.EqualValues(t, <-rh, <-wh)
+	assert.Equal(t, ChunkedSize(int64(totalWrite), chunkSize), int64(cw.Len()))
+}
+
+func BenchmarkChunkedWrite(b *testing.B) {
 	r := &io.LimitedReader{
 		R: &zeroReader{},
 	}
@@ -338,7 +408,7 @@ func BenchmarkWrite(b *testing.B) {
 	}
 }
 
-func BenchmarkRead(b *testing.B) {
+func BenchmarkChunkedRead(b *testing.B) {
 	bufs := make([]*bufWriter, 24)
 
 	for i := 0; i < 24; i++ {
@@ -440,6 +510,17 @@ func (w *bufWriter) Write(p []byte) (n int, err error) {
 func (w *bufWriter) Close() error {
 	w.n = 0
 	return nil
+}
+
+type countWriter int
+
+func (c *countWriter) Len() int {
+	return int(*c)
+}
+
+func (c *countWriter) Write(p []byte) (n int, err error) {
+	*c = countWriter(int(*c) + len(p))
+	return len(p), nil
 }
 
 func byteCountIEC(b int64) string {

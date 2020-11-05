@@ -28,7 +28,7 @@ type chunkedReader struct {
 }
 
 // ChunkedSize ...
-func ChunkedSize(n int64, chunkSize int64) int64 {
+func ChunkedSize(n int64, chunkSize int) int64 {
 	if n == 0 {
 		return 2
 	}

@@ -132,6 +132,7 @@ func (p *rpcConn) ReleaseCodecMsg(typeID uint64, msg interface{}) error {
 
 func (p *rpcConn) handleCallMsg(msg *connMsg) {
 	defer p.putConnMsg(msg)
+	defer msg.msgCodec.putMsg(msg.msg)
 
 	msg.ctx = p.ctx
 
@@ -155,11 +156,15 @@ func (p *rpcConn) handleCallMsg(msg *connMsg) {
 		}
 
 	} else if atomic.CompareAndSwapInt64(&msg.respState, respStatePrepared, respStateSent) {
+		msg.msgCodec.putMsg(msg.msg)
+
 		if err := msg.sendError(ErrUnimplementedRPC); err != nil {
 			// log
 			return
 		}
 
+	} else if atomic.CompareAndSwapInt64(&msg.respState, respStateSent, respStateSent) {
+		msg.msgCodec.putMsg(msg.msg)
 	}
 
 	return

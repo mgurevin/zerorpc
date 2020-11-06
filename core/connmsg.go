@@ -36,9 +36,8 @@ type connMsg struct {
 	errCh   chan error
 	replyCh chan *connMsg
 
-	ctx          context.Context
-	respState    int64
-	callReleased int64
+	ctx       context.Context
+	respState int64
 
 	op       rpcOp
 	callID   uint64
@@ -49,12 +48,6 @@ type connMsg struct {
 }
 
 func (m *connMsg) PrepareResponse(messageTypeID uint64) (msg interface{}, err error) {
-	if atomic.CompareAndSwapInt64(&m.callReleased, 0, 1) {
-		if err := m.msgCodec.putMsg(m.msg); err != nil {
-			return nil, err
-		}
-	}
-
 	if atomic.CompareAndSwapInt64(&m.respState, respStateNew, respStatePrepared) {
 		m.msgType = messageTypeID
 
@@ -76,8 +69,6 @@ func (m *connMsg) PrepareResponse(messageTypeID uint64) (msg interface{}, err er
 
 func (m *connMsg) SendResponse() error {
 	if atomic.CompareAndSwapInt64(&m.respState, respStatePrepared, respStateSent) {
-		defer m.msgCodec.putMsg(m.msg)
-
 		m.op = rpcOpRet
 
 		select {
@@ -107,8 +98,6 @@ func (m *connMsg) SendError(e error) error {
 }
 
 func (m *connMsg) sendError(e error) error {
-	m.msgCodec.putMsg(m.msg)
-
 	if errors.Is(e, ErrUnimplementedRPC) {
 		m.op = rpcOpErrUnimplemented
 		m.msg = nil
@@ -138,7 +127,6 @@ func (m *connMsg) sendError(e error) error {
 func (m *connMsg) reset() *connMsg {
 	m.ctx = nil
 	m.respState = respStateNew
-	m.callReleased = 0
 
 	m.op = 0
 	m.callID = 0

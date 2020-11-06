@@ -4,8 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"io"
-	"net"
-	"strconv"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -154,55 +153,61 @@ func BenchmarkRPCCall(b *testing.B) {
 	go rA.handleIncomingMsg()
 	go rB.handleIncomingMsg()
 
-	for i := 1; i <= 10; i++ {
-		cA, cB := net.Pipe()
+	for i := 0; i < runtime.NumCPU(); i++ {
+		cAr, cBw := io.Pipe()
+		cBr, cAw := io.Pipe()
 
 		go func() {
 			<-ctx.Done()
-			cA.Close()
-			cB.Close()
+			cAr.Close()
+			cAw.Close()
+			cBr.Close()
+			cBw.Close()
 		}()
 
-		go rA.handleConn(ctx, cA, cA)
-		go rB.handleConn(ctx, cB, cB)
+		go rA.handleConn(ctx, cAw, cAr)
+		go rB.handleConn(ctx, cBw, cBr)
 	}
 
-	for i := 1; i <= 8; i *= 2 {
-		b.Run(strconv.Itoa(i), func(b *testing.B) {
-			b.ReportAllocs()
-			b.SetParallelism(i)
+	b.Run("Call", func(b *testing.B) {
+		cnt := int64(0)
+		start := time.Now()
 
-			var cnt uint64
-			start := time.Now()
+		b.ReportAllocs()
+		b.SetParallelism(runtime.NumCPU())
 
-			b.RunParallel(func(pb *testing.PB) {
-				for pb.Next() {
-					answerTypeID, answerMsg, err := rA.Call(ctx, methodAdd, msgAddReq, func(msg interface{}) error {
-						msg.(*addReq).NumA = 2
-						msg.(*addReq).NumB = 2
+		b.StartTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				numA := int(atomic.LoadInt64(&cnt))
+				numB := numA + 1
 
-						return nil
-					})
+				answerTypeID, answerMsg, err := rA.Call(ctx, methodAdd, msgAddReq, func(msg interface{}) error {
+					msg.(*addReq).NumA = numA
+					msg.(*addReq).NumB = numB
 
-					if err != nil {
-						b.Fatal(err)
-					}
+					return nil
+				})
 
-					if answerMsg.(*addResp).Result != 4 {
-						b.Fatalf("%d + %d = %d not %d", 2, 2, answerMsg.(*addResp).Result, 4)
-					}
-
-					if err = rA.ReleaseCodecMsg(answerTypeID, answerMsg); err != nil {
-						b.Fatal(err)
-					}
-
-					atomic.AddUint64(&cnt, 1)
+				if err != nil {
+					b.Fatal(err)
 				}
-			})
 
-			b.ReportMetric(float64(cnt)/time.Since(start).Seconds(), "call/sec")
+				if r := answerMsg.(*addResp).Result; r != numA+numB {
+					b.Fatalf("sum err: %d + %d = %d (must %d)", numA, numB, r, numA+numB)
+				}
+
+				if err = rA.ReleaseCodecMsg(answerTypeID, answerMsg); err != nil {
+					b.Fatal(err)
+				}
+
+				atomic.AddInt64(&cnt, 1)
+			}
 		})
-	}
+		b.StopTimer()
+
+		b.ReportMetric(float64(cnt)/time.Since(start).Seconds(), "call/sec")
+	})
 }
 
 func BenchmarkRPCPush(b *testing.B) {
@@ -244,45 +249,48 @@ func BenchmarkRPCPush(b *testing.B) {
 	go rA.handleIncomingMsg()
 	go rB.handleIncomingMsg()
 
-	for i := 1; i <= 10; i++ {
-		cA, cB := net.Pipe()
+	for i := 0; i < runtime.NumCPU(); i++ {
+		cAr, cBw := io.Pipe()
+		cBr, cAw := io.Pipe()
 
 		go func() {
 			<-ctx.Done()
-			cA.Close()
-			cB.Close()
+			cAr.Close()
+			cAw.Close()
+			cBr.Close()
+			cBw.Close()
 		}()
 
-		go rA.handleConn(ctx, cA, cA)
-		go rB.handleConn(ctx, cB, cB)
+		go rA.handleConn(ctx, cAw, cAr)
+		go rB.handleConn(ctx, cBw, cBr)
 	}
 
-	for i := 1; i <= 8; i *= 2 {
-		b.Run(strconv.Itoa(i), func(b *testing.B) {
-			b.ReportAllocs()
-			b.SetParallelism(i)
+	b.Run("Push", func(b *testing.B) {
+		cnt := int64(0)
+		start := time.Now()
 
-			var cnt uint64
-			start := time.Now()
+		b.ReportAllocs()
+		b.SetParallelism(runtime.NumCPU())
 
-			b.RunParallel(func(pb *testing.PB) {
-				for pb.Next() {
-					err := rA.Push(ctx, methodAdd, msgAddReq, func(msg interface{}) error {
-						msg.(*addReq).NumA = 2
-						msg.(*addReq).NumB = 2
+		b.StartTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				err := rA.Push(ctx, methodAdd, msgAddReq, func(msg interface{}) error {
+					msg.(*addReq).NumA = 2
+					msg.(*addReq).NumB = 2
 
-						return nil
-					})
+					return nil
+				})
 
-					if err != nil {
-						b.Fatal(err)
-					}
-
-					atomic.AddUint64(&cnt, 1)
+				if err != nil {
+					b.Fatal(err)
 				}
-			})
 
-			b.ReportMetric(float64(cnt)/time.Since(start).Seconds(), "push/sec")
+				atomic.AddInt64(&cnt, 1)
+			}
 		})
-	}
+		b.StopTimer()
+
+		b.ReportMetric(float64(cnt)/time.Since(start).Seconds(), "push/sec")
+	})
 }

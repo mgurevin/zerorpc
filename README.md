@@ -2,7 +2,7 @@
 A lightweight, bidirectional RPC (WIP!)
 
 ```
-[mehmet@zero zerorpc]$ go test ./core -bench='BenchmarkRPC(Call|Push)' -benchtime=3s -cpu=1,2,4,8 -cpuprofile=cpu.profile -memprofile=mem.profile -mutexprofile=mutex.profile 
+[mehmet@zero zerorpc]$ go test ./core -bench='BenchmarkRPC(Call|Push)' -benchtime=3s -cpu=1,2,4,8
 goos: linux
 goarch: amd64
 pkg: github.com/mgurevin/zerorpc/core

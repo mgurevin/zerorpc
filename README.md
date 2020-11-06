@@ -2,18 +2,19 @@
 A lightweight, bidirectional RPC (WIP!)
 
 ```
+[mehmet@zero zerorpc]$ go test ./core -bench='BenchmarkRPC(Call|Push)' -benchtime=3s -cpu=1,2,4,8
 goos: linux
 goarch: amd64
 pkg: github.com/mgurevin/zerorpc/core
-BenchmarkRPCCall/1         	   60192	     18306 ns/op	     54626 call/sec	       0 B/op	       0 allocs/op
-BenchmarkRPCCall/2         	   58224	     19277 ns/op	     51877 call/sec	       0 B/op	       0 allocs/op
-BenchmarkRPCCall/4         	   62991	     18885 ns/op	     52952 call/sec	       0 B/op	       0 allocs/op
-BenchmarkRPCCall/8         	   61892	     18759 ns/op	     53308 call/sec	       0 B/op	       0 allocs/op
-BenchmarkRPCPush/1         	  140817	      8169 ns/op	    122410 push/sec	       0 B/op	       0 allocs/op
-BenchmarkRPCPush/2         	  142762	      8279 ns/op	    120787 push/sec	       0 B/op	       0 allocs/op
-BenchmarkRPCPush/4         	  142092	      8285 ns/op	    120705 push/sec	       0 B/op	       0 allocs/op
-BenchmarkRPCPush/8         	  138418	      8289 ns/op	    120649 push/sec	       0 B/op	       0 allocs/op
+BenchmarkRPCCall/Call           	  249330	     14458 ns/op	     69166 call/sec	       0 B/op	       0 allocs/op
+BenchmarkRPCCall/Call-2         	  308313	     10532 ns/op	     94948 call/sec	       1 B/op	       0 allocs/op
+BenchmarkRPCCall/Call-4         	  466051	      9067 ns/op	    110291 call/sec	       1 B/op	       0 allocs/op
+BenchmarkRPCCall/Call-8         	  403508	      9147 ns/op	    109317 call/sec	       1 B/op	       0 allocs/op
+BenchmarkRPCPush/Push           	  435667	      7269 ns/op	    137562 push/sec	       0 B/op	       0 allocs/op
+BenchmarkRPCPush/Push-2         	  820389	      5073 ns/op	    197129 push/sec	       0 B/op	       0 allocs/op
+BenchmarkRPCPush/Push-4         	  919329	      3877 ns/op	    257931 push/sec	       0 B/op	       0 allocs/op
+BenchmarkRPCPush/Push-8         	  708032	      4601 ns/op	    217328 push/sec	       0 B/op	       0 allocs/op
 PASS
-ok  	github.com/mgurevin/zerorpc/core	10.439s
+ok  	github.com/mgurevin/zerorpc/core	32.872s
 ```
 

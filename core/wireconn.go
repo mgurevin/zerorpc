@@ -117,17 +117,18 @@ func (c *wireConn) writeMsg(msg *connMsg) (err error) {
 		if e, ok := msg.msg.(error); !ok {
 			return ErrMalformedWireMsg
 
-		} else if eMsg := e.Error(); len(eMsg) == 0 || len(eMsg) > 255 {
+		} else if eMsg := e.Error(); eMsg == "" {
+			return ErrMalformedWireMsg
+
+		} else if eMsgLen := len(eMsg); eMsgLen > 255 {
 			return ErrMalformedWireMsg
 
 		} else {
-			copy(c.errBuf[:], eMsg[:])
-
-			c.writeBuf[0] = byte(len(eMsg))
+			c.writeBuf[0] = byte(eMsgLen)
 			if _, err = c.w.Write(c.writeBuf[:1]); err != nil {
 				return err
 
-			} else if _, err = c.w.Write(c.errBuf[:len(eMsg)]); err != nil {
+			} else if _, err = c.w.Write(eMsg[:eMsgLen]); err != nil {
 				return err
 			}
 		}
@@ -214,6 +215,9 @@ func (c *wireConn) readMsg(msg *connMsg) (err error) {
 			return c.setErr(err)
 
 		} else {
+			// an allocation occurs as the pointer size and the
+			// length of the error message in the utf8 encoding
+
 			errMsg := string(c.errBuf[:l])
 			msg.msg = (*ErrRemote)(&errMsg)
 		}

@@ -102,7 +102,7 @@ func (c *addRespCodec) Decode(dst interface{}, src io.Reader) error {
 	return nil
 }
 
-func BenchmarkRPCCall(b *testing.B) {
+func BenchmarkZeroRPCCall(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -210,7 +210,7 @@ func BenchmarkRPCCall(b *testing.B) {
 	})
 }
 
-func BenchmarkRPCPush(b *testing.B) {
+func BenchmarkZeroRPCPush(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

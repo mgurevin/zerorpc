@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option go_package = "github.com/mgurevin/zerorpc/benchmark";
+
+message SumRequest {
+    int64 NumA = 1;
+    int64 NumB = 2;
+}
+
+message SumResponse {
+    int64 Result = 1;
+}
+
+service Sum {
+    rpc Sum(SumRequest) returns(SumResponse) {}
+}

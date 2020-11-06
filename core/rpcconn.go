@@ -55,8 +55,8 @@ func newRPCConn(ctx context.Context, handler func(Call) error) *rpcConn {
 
 		sendCh:  make(chan *connMsg),
 		recvCh:  make(chan *connMsg),
-		wait:    make(map[uint64]chan *connMsg),
-		codecs:  make(map[uint64]*msgCodec),
+		wait:    make(map[uint64]chan *connMsg, 1<<17),
+		codecs:  make(map[uint64]*msgCodec, 1<<10),
 		handler: handler,
 	}
 

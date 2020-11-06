@@ -1,7 +1,8 @@
 # zerorpc
 A lightweight, bidirectional RPC (WIP!)
 
-```goos: linux
+```
+goos: linux
 goarch: amd64
 pkg: github.com/mgurevin/zerorpc/core
 BenchmarkRPCCall/1         	   60192	     18306 ns/op	     54626 call/sec	       0 B/op	       0 allocs/op
@@ -13,5 +14,6 @@ BenchmarkRPCPush/2         	  142762	      8279 ns/op	    120787 push/sec	      
 BenchmarkRPCPush/4         	  142092	      8285 ns/op	    120705 push/sec	       0 B/op	       0 allocs/op
 BenchmarkRPCPush/8         	  138418	      8289 ns/op	    120649 push/sec	       0 B/op	       0 allocs/op
 PASS
-ok  	github.com/mgurevin/zerorpc/core	10.439s```
+ok  	github.com/mgurevin/zerorpc/core	10.439s
+```
 
